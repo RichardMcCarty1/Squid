@@ -105,6 +105,8 @@ public class SquidLabData implements Serializable {
                     retVal = new SquidLabData();
                 }
             } else {
+                new File(
+                File.separator + System.getProperty("user.home") + File.separator + SQUID_USERS_DATA_FOLDER_NAME).mkdir();
                 retVal = new SquidLabData();
             }
         } catch (IOException | ClassNotFoundException e) {
