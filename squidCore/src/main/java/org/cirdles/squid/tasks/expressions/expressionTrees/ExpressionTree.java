@@ -46,6 +46,7 @@ import org.cirdles.squid.tasks.expressions.operations.Divide;
 import org.cirdles.squid.tasks.expressions.operations.Operation;
 import org.cirdles.squid.tasks.expressions.operations.OperationXMLConverter;
 import org.cirdles.squid.tasks.expressions.spots.SpotFieldNode;
+import org.cirdles.squid.tasks.expressions.spots.SpotFieldNodeNodeXMLConverter;
 import org.cirdles.squid.tasks.expressions.variables.VariableNodeForPerSpotTaskExpressions;
 import org.cirdles.squid.tasks.expressions.variables.VariableNodeForIsotopicRatios;
 import org.cirdles.squid.tasks.expressions.variables.VariableNodeForSummary;
@@ -127,7 +128,7 @@ public class ExpressionTree
     protected String uncertaintyDirective;
 
     protected int index;
-    
+
     protected transient boolean hasNoTargetSpots;
 
     public void setHasNoTargetSpots(boolean hasNoTargetSpots) {
@@ -137,7 +138,6 @@ public class ExpressionTree
     public boolean doesHaveNoTargetSpots() {
         return hasNoTargetSpots;
     }
-    
 
     /**
      *
@@ -331,7 +331,7 @@ public class ExpressionTree
 
             if (retVal == 0) {
                 // then compare on names so we have a complete ordering
-                retVal = 1;//getName().compareToIgnoreCase(exp.getName());
+                retVal = 1;
             }
         }
         return retVal;
@@ -468,6 +468,16 @@ public class ExpressionTree
         return name.compareTo(ANONYMOUS_NAME) == 0;
     }
 
+    public boolean amIsotopicRatio() {
+        boolean retVal = false;
+        if (childrenET.size() > 1) {
+            retVal = (childrenET.get(0) instanceof ShrimpSpeciesNode)
+                    && (childrenET.get(1) instanceof ShrimpSpeciesNode)
+                    && (operation instanceof Divide);
+        }
+        return retVal;
+    }
+
     /**
      *
      * @param xstream
@@ -483,6 +493,9 @@ public class ExpressionTree
 
         xstream.registerConverter(new ConstantNodeXMLConverter());
         xstream.alias("ConstantNode", ConstantNode.class);
+        
+        xstream.registerConverter(new SpotFieldNodeNodeXMLConverter());
+        xstream.alias("SpotFieldNode", SpotFieldNode.class);
 
         xstream.registerConverter(new VariableNodeForSummaryXMLConverter());
         xstream.alias("VariableNodeForSummary", VariableNodeForSummary.class);
@@ -572,18 +585,18 @@ public class ExpressionTree
     public boolean isTypeFunctionOrOperation() {
         return (operation instanceof Function) || (operation instanceof Operation);
     }
-    
+
     /**
      *
      * @return true if this expressionTree is built as a ValueModel
      */
     @Override
-    public boolean builtAsValueModel(){
+    public boolean builtAsValueModel() {
         boolean retVal = false;
-        if (isTypeFunction()){
+        if (isTypeFunction()) {
             retVal = operation.getColCount() > 1;
         }
-        
+
         return retVal;
     }
 
