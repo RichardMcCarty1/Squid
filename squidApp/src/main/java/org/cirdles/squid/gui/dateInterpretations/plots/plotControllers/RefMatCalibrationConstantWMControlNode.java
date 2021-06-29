@@ -15,14 +15,6 @@
  */
 package org.cirdles.squid.gui.dateInterpretations.plots.plotControllers;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ChangeListener;
@@ -36,37 +28,41 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.shape.Path;
 import org.cirdles.squid.dialogs.SquidMessageDialog;
-import static org.cirdles.squid.gui.SquidUI.primaryStageWindow;
-import static org.cirdles.squid.gui.SquidUIController.squidProject;
+import org.cirdles.squid.gui.dataViews.SampleTreeNodeInterface;
+import org.cirdles.squid.gui.dateInterpretations.plots.squid.PlotRefreshInterface;
+import org.cirdles.squid.gui.dateInterpretations.plots.squid.WeightedMeanPlot;
+import org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategory;
 import org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategoryInterface;
+import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumn;
 import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumnInterface;
 import org.cirdles.squid.tasks.expressions.spots.SpotSummaryDetails;
-import org.cirdles.squid.gui.dataViews.SampleTreeNodeInterface;
-import static org.cirdles.squid.gui.dateInterpretations.plots.plotControllers.PlotsController.spotSummaryDetails;
-import static org.cirdles.squid.gui.dateInterpretations.plots.plotControllers.PlotsController.spotsTreeViewCheckBox;
-import static org.cirdles.squid.gui.dateInterpretations.plots.plotControllers.PlotsController.spotsTreeViewString;
-import static org.cirdles.squid.gui.dateInterpretations.plots.plotControllers.PlotsController.plot;
-import org.cirdles.squid.gui.dateInterpretations.plots.squid.WeightedMeanPlot;
-import static org.cirdles.squid.gui.utilities.stringUtilities.StringTester.stringIsSquidRatio;
-import org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategory;
-import static org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategory.defaultRefMatWMSortingCategories;
-import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumn;
-import org.cirdles.squid.gui.dateInterpretations.plots.squid.PlotRefreshInterface;
-import org.cirdles.squid.gui.utilities.fileUtilities.FileHandler;
 import org.cirdles.squid.utilities.FileUtilities;
 import org.cirdles.squid.utilities.OsCheck;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import static org.cirdles.squid.gui.SquidUI.primaryStageWindow;
+import static org.cirdles.squid.gui.SquidUIController.squidProject;
+import static org.cirdles.squid.gui.dateInterpretations.plots.plotControllers.PlotsController.*;
+import static org.cirdles.squid.gui.utilities.stringUtilities.StringTester.stringIsSquidRatio;
+import static org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategory.defaultRefMatCalibrationConstantSortingCategories;
 
 /**
  * @author James F. Bowring, CIRDLES.org, and Earth-Time.org
  */
-public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeInterface {
+public class RefMatCalibrationConstantWMControlNode extends HBox implements ToolBoxNodeInterface {
 
     private PlotRefreshInterface plotsController;
 
     private final ComboBox<SquidReportCategoryInterface> categorySortComboBox;
     private final ComboBox<SquidReportColumnInterface> expressionSortComboBox;
 
-    public RefMatWeightedMeanControlNode(PlotRefreshInterface plotsController) {
+    public RefMatCalibrationConstantWMControlNode(PlotRefreshInterface plotsController) {
         super(4);
 
         this.plotsController = plotsController;
@@ -76,10 +72,10 @@ public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeIn
 
         initNode();
 
-        // set up custom sorting for ref mat wm
-        List<SquidReportCategory> refMatWMSortingCategories = defaultRefMatWMSortingCategories;
+        // set up custom sorting for ref mat calibration constant wm
+        List<SquidReportCategory> refMatCalibrationConstantWMSortingCategories = defaultRefMatCalibrationConstantSortingCategories;
         // handle special case where raw ratios is populated on the fly per task
-        SquidReportCategoryInterface rawRatiosCategory = refMatWMSortingCategories.get(1);
+        SquidReportCategoryInterface rawRatiosCategory = refMatCalibrationConstantWMSortingCategories.get(1);
         LinkedList<SquidReportColumnInterface> categoryColumns = new LinkedList<>();
         for (String ratioName : squidProject.getTask().getRatioNames()) {
             SquidReportColumnInterface column = SquidReportColumn.createSquidReportColumn(ratioName);
@@ -87,7 +83,7 @@ public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeIn
         }
         rawRatiosCategory.setCategoryColumns(categoryColumns);
 
-        categorySortComboBox.setItems(FXCollections.observableArrayList(defaultRefMatWMSortingCategories));
+        categorySortComboBox.setItems(FXCollections.observableArrayList(defaultRefMatCalibrationConstantSortingCategories));
         categorySortComboBox.getSelectionModel().selectFirst();
         expressionSortComboBox.setItems(FXCollections.observableArrayList(categorySortComboBox.getSelectionModel().getSelectedItem().getCategoryColumns()));
 
@@ -106,7 +102,7 @@ public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeIn
         CheckBox autoExcludeSpotsCheckBox = autoExcludeSpotsCheckBox();
         CheckBox showExcludedSpotsCheckBox = showExcludedSpotsCheckBox();
         HBox plotChoiceHBox = plotChoiceHBox();
-        HBox corrChoiceHBox = new RefMatWeightedMeanToolBoxNode(plotsController);
+        HBox corrChoiceHBox = new RefMatCalibrationConstantWMToolBoxNode(plotsController);
         HBox sortingToolBox = sortedHBox();
         HBox exportToSVGHBox = exportButtonHBox();
 
@@ -146,7 +142,7 @@ public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeIn
             @Override
             public void handle(ActionEvent event) {
                 WeightedMeanPlot.doPlotRejectedSpots = !WeightedMeanPlot.doPlotRejectedSpots;
-                plotsController.showRefMatWeightedMeanPlot();
+                plotsController.showRefMatCalibrationConstantPlot();
             }
         });
         formatNode(autoExcludeSpotsCheckBox, 80);
@@ -179,7 +175,7 @@ public class RefMatWeightedMeanControlNode extends HBox implements ToolBoxNodeIn
             @Override
             public void changed(ObservableValue<? extends Toggle> observable, Toggle oldValue, Toggle newValue) {
                 WeightedMeanPlot.switchRefMatViewToCalibConst = (boolean) plotGroup.getSelectedToggle().getUserData();
-                plotsController.showRefMatWeightedMeanPlot();
+                plotsController.showRefMatCalibrationConstantPlot();
             }
         });
 

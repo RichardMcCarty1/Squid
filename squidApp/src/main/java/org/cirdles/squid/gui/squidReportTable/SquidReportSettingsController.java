@@ -20,14 +20,12 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 import org.cirdles.squid.dialogs.SquidMessageDialog;
+import org.cirdles.squid.exceptions.SquidException;
 import org.cirdles.squid.gui.SquidUI;
 import org.cirdles.squid.gui.utilities.fileUtilities.FileHandler;
 import org.cirdles.squid.shrimp.ShrimpFractionExpressionInterface;
@@ -50,21 +48,24 @@ import org.cirdles.squid.tasks.expressions.spots.SpotFieldNode;
 import org.cirdles.squid.tasks.expressions.variables.VariableNodeForSummary;
 import org.cirdles.squid.utilities.IntuitiveStringComparator;
 import org.cirdles.squid.utilities.fileUtilities.ProjectFileUtilities;
+import org.xml.sax.SAXException;
 
+import javax.xml.XMLConstants;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
-import javafx.scene.input.DataFormat;
 
-import static org.cirdles.squid.constants.Squid3Constants.ABS_UNCERTAINTY_DIRECTIVE;
-import org.cirdles.squid.constants.Squid3Constants.SpotTypes;
-import org.cirdles.squid.exceptions.SquidException;
+import static org.cirdles.squid.constants.Squid3Constants.*;
 import static org.cirdles.squid.gui.SquidUI.*;
 import static org.cirdles.squid.gui.SquidUIController.*;
 import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.NAME_OF_WEIGHTEDMEAN_PLOT_SORT_REPORT;
+import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.RM_NAME_OF_WEIGHTEDMEAN_PLOT_SORT_REPORT;
 import static org.cirdles.squid.utilities.conversionUtilities.CloningUtilities.clone2dArray;
 import static org.cirdles.squid.utilities.conversionUtilities.RoundingUtilities.squid3RoundedToSize;
+import static org.cirdles.squid.utilities.fileUtilities.FileValidator.validateXML;
 
 /**
  * FXML Controller class
@@ -73,8 +74,16 @@ import static org.cirdles.squid.utilities.conversionUtilities.RoundingUtilities.
  */
 public class SquidReportSettingsController implements Initializable {
 
+    static final DataFormat STRING_LIST = new DataFormat("StringList");
+    public static Expression expressionToHighlightOnInit = null;
     private static boolean showContextMenu = true;
-
+    private final ObjectProperty<Expression> selectedExpression = new SimpleObjectProperty<>();
+    private final ObjectProperty<SquidReportCategoryInterface> selectedCategory = new SimpleObjectProperty<>();
+    private final ObjectProperty<Boolean> selectedCategoryIsFixedCategory = new SimpleObjectProperty<>();
+    private final ObjectProperty<SquidReportColumnInterface> selectedColumn = new SimpleObjectProperty<>();
+    private final ObjectProperty<Boolean> isEditing = new SimpleObjectProperty<>();
+    private final ObjectProperty<Boolean> isDefault = new SimpleObjectProperty<>();
+    private final ObjectProperty<Boolean> isDefaultLab = new SimpleObjectProperty<>();
     @FXML
     public ChoiceBox<SquidReportTableInterface> reportTableCB;
     @FXML
@@ -97,6 +106,7 @@ public class SquidReportSettingsController implements Initializable {
     public Button exportCSVButton;
     @FXML
     public HBox settingsAndSpotsCB;
+    List<Expression> namedExpressions;
     @FXML
     private SplitPane mainPane;
     @FXML
@@ -141,20 +151,7 @@ public class SquidReportSettingsController implements Initializable {
     private TitledPane colunmnsTitledPane;
     @FXML
     private HBox buttonHBox;
-
-    private final ObjectProperty<Expression> selectedExpression = new SimpleObjectProperty<>();
-    private final ObjectProperty<SquidReportCategoryInterface> selectedCategory = new SimpleObjectProperty<>();
-    private final ObjectProperty<Boolean> selectedCategoryIsFixedCategory = new SimpleObjectProperty<>();
-    private final ObjectProperty<SquidReportColumnInterface> selectedColumn = new SimpleObjectProperty<>();
-
-    List<Expression> namedExpressions;
-    public static Expression expressionToHighlightOnInit = null;
     private TaskInterface task;
-
-    private ObjectProperty<Boolean> isEditing = new SimpleObjectProperty<>();
-    private ObjectProperty<Boolean> isDefault = new SimpleObjectProperty<>();
-    private ObjectProperty<Boolean> isDefaultLab = new SimpleObjectProperty<>();
-
     private boolean isRefMat;
     private SquidReportTableInterface selectedRefMatReportModel;
     private SquidReportTableInterface selectedUnknownReportModel;
@@ -234,18 +231,15 @@ public class SquidReportSettingsController implements Initializable {
             if (!isRefMat
                     && reportTableCB.getSelectionModel().getSelectedItem().getReportTableName().matches(NAME_OF_WEIGHTEDMEAN_PLOT_SORT_REPORT)) {
                 Arrays.asList(makeDefaultButton, deleteButton, renameButton).forEach(button -> button.setDisable(true));
-            } else {
-                Arrays.asList(makeDefaultButton, deleteButton, renameButton).forEach(button -> button.setDisable(false));
+            } else if (isRefMat
+                    && reportTableCB.getSelectionModel().getSelectedItem().getReportTableName().matches(RM_NAME_OF_WEIGHTEDMEAN_PLOT_SORT_REPORT)) {
+                Arrays.asList(makeDefaultButton, deleteButton, renameButton).forEach(button -> button.setDisable(true));
             }
         }
     }
 
     private void processReportTableChoiceBoxes() {
-        if (isEditing.getValue()) {
-            reportTableCB.setDisable(true);
-        } else {
-            reportTableCB.setDisable(false);
-        }
+        reportTableCB.setDisable(isEditing.getValue());
     }
 
     private void initEditing() {
@@ -290,14 +284,11 @@ public class SquidReportSettingsController implements Initializable {
                 if (isRefMat) {
                     selectedRefMatReportModel = reportTableCB.getSelectionModel().getSelectedItem();
                     task.setSelectedRefMatReportModel(selectedRefMatReportModel);
-                    //makeDefaultButton.setDisable(isDefaultLab.get());//    selectedRefMatReportModel.isDefault() || selectedRefMatReportModel.amWeightedMeanPlotAndSortReport() || !saveButton.isDisabled());
                 } else {
                     selectedUnknownReportModel = reportTableCB.getSelectionModel().getSelectedItem();
                     task.setSelectedUnknownReportModel(selectedUnknownReportModel);
-                    // makeDefaultButton.setDisable(isDefaultLab.get());//  selectedUnknownReportModel.isDefault() || selectedUnknownReportModel.amWeightedMeanPlotAndSortReport() || !saveButton.isDisabled());
                 }
                 processButtons();
-
             }
         });
         populateSquidReportTableChoiceBox();
@@ -646,6 +637,12 @@ public class SquidReportSettingsController implements Initializable {
 
         // context-sensitivity - we use Ma in Squid for display
         boolean isAge = expTree.getName().toUpperCase(Locale.ENGLISH).contains("AGE");
+        String[][] resultLabelsFirst = new String[0][];
+        if (((ExpressionTree) expTree).getOperation() != null) {
+            resultLabelsFirst = clone2dArray(((ExpressionTree) expTree).getOperation().getLabelsForOutputValues());
+            isAge = isAge || resultLabelsFirst[0][0].toUpperCase(Locale.ENGLISH).contains("AGE");
+        }
+
         String contextAgeFieldName = (isAge ? "Age(Ma)" : "Value");
         String contextAge1SigmaAbsName = (isAge ? "1\u03C3Abs(Ma)" : "1\u03C3Abs");
         // or it may be concentration ppm
@@ -682,7 +679,7 @@ public class SquidReportSettingsController implements Initializable {
             } else if (((ExpressionTree) expTree).getLeftET() instanceof ShrimpSpeciesNode) {
                 // Check for functions of species
                 if (((ExpressionTree) expTree).getOperation() instanceof ShrimpSpeciesNodeFunction) {
-                    resultLabels = new String[][]{{((ShrimpSpeciesNodeFunction) ((ExpressionTree) expTree).getOperation()).getName()}, {}};
+                    resultLabels = new String[][]{{((ExpressionTree) expTree).getOperation().getName()}, {}};
                 } else {
                     // case of ratio
                     resultLabels = new String[][]{{expTree.getName(), "1\u03C3Abs", "1\u03C3%"}, {}};
@@ -699,10 +696,22 @@ public class SquidReportSettingsController implements Initializable {
                 }
             } else {
                 // some smarts
-                String[][] resultLabelsFirst = clone2dArray(((ExpressionTree) expTree).getOperation().getLabelsForOutputValues());
-                resultLabels = new String[1][resultLabelsFirst[0].length == 1 ? 1 : 3];
+//                String[][] resultLabelsFirst = clone2dArray(((ExpressionTree) expTree).getOperation().getLabelsForOutputValues());
+//                resultLabels = new String[1][resultLabelsFirst[0].length == 1 ? 1 : 3];
+//                resultLabels[0][0] = contextAgeFieldName;
+//                if (resultLabelsFirst[0].length > 1) {
+//                    resultLabels[0][1] = contextAge1SigmaAbsName;
+//                    resultLabels[0][2] = "1\u03C3%";
+//                }
+                // if only one label, keep it; if two, assume 1sigma abs
+                resultLabels = new String[1][resultLabelsFirst[0].length == 1 ? 1 : resultLabelsFirst[0].length == 2 ? 3 : resultLabelsFirst[0].length];
                 resultLabels[0][0] = contextAgeFieldName;
-                if (resultLabelsFirst[0].length > 1) {
+                if (resultLabelsFirst[0].length > 2) {
+                    resultLabels[0][1] = contextAge1SigmaAbsName;
+                    for (int i = 2; i < resultLabelsFirst[0].length; i++) {
+                        resultLabels[0][i] = resultLabelsFirst[0][i];
+                    }
+                } else if (resultLabelsFirst[0].length > 1) {
                     resultLabels[0][1] = contextAge1SigmaAbsName;
                     resultLabels[0][2] = "1\u03C3%";
                 }
@@ -732,23 +741,10 @@ public class SquidReportSettingsController implements Initializable {
                         } else {
                             Formatter formatter = new Formatter();
                             for (int i = 0; i < resultLabels[0].length; i++) {
-                                formatter.format("% 20.14" + (String) ((i == 2) ? "f   " : "E   "), squid3RoundedToSize(results[0][i], sigDigits));
+                                formatter.format("% 20.14" + ((i == 2) ? "f   " : "E   "), squid3RoundedToSize(results[0][i], sigDigits));
                             }
-                            sb.append(formatter.toString());
+                            sb.append(formatter);
                         }
-//
-//
-//                        try {
-//                            double[][] results
-//                                    = Arrays.stream(spot.getTaskExpressionsEvaluationsPerSpot().get(expTree)).toArray(double[][]::new);
-//                            for (int i = 0; i < resultLabels[0].length; i++) {
-//                                try {
-//                                    sb.append(String.format("%1$-" + 20 + "s", squid3RoundedToSize(results[0][i], sigDigits)));
-//                                } catch (Exception e) {
-//                                }
-//                            }
-//                        } catch (Exception e) {
-//                        }
                         sb.append("\n");
                     }
                 } else if (((ExpressionTree) expTree).getOperation() instanceof Value) {
@@ -763,9 +759,9 @@ public class SquidReportSettingsController implements Initializable {
                         } else {
                             Formatter formatter = new Formatter();
                             for (int i = 0; i < results[0].length; i++) {
-                                formatter.format("% 20.14" + (String) ((i == 2) ? "f   " : "E   "), squid3RoundedToSize(results[0][i], sigDigits));
+                                formatter.format("% 20.14" + ((i == 2) ? "f   " : "E   "), squid3RoundedToSize(results[0][i], sigDigits));
                             }
-                            sb.append(formatter.toString());
+                            sb.append(formatter);
                         }
                         sb.append("\n");
                     }
@@ -781,7 +777,7 @@ public class SquidReportSettingsController implements Initializable {
                         } else {
                             Formatter formatter = new Formatter();
                             formatter.format("% 20.14E   % 20.14E   % 20.14f   ", results[0][0], results[0][1], calcPercentUnct(results[0]));
-                            sb.append(formatter.toString());
+                            sb.append(formatter);
                         }
 
                         sb.append("\n");
@@ -793,7 +789,6 @@ public class SquidReportSettingsController implements Initializable {
                         sb.append(String.format("%1$-" + 18 + "s", spot.getFractionID()));
                         double[][] results
                                 = Arrays.stream(spot.getTaskExpressionsEvaluationsPerSpot().get(expTree)).toArray(double[][]::new);
-
                         if (!Double.isFinite(results[0][0])) {
                             sb.append("NaN");
                         } else {
@@ -801,11 +796,18 @@ public class SquidReportSettingsController implements Initializable {
                             if ((resultLabels[0].length == 1) && (results[0].length >= 1)) {
                                 resultsWithPct = new double[1];
                                 resultsWithPct[0] = squid3RoundedToSize(results[0][0] / (isAge ? 1.0e6 : 1.0), sigDigits);
-                            } else if (results[0].length > 1) {
+                            } else if (resultLabels[0].length == 3) {
                                 resultsWithPct = new double[3];
                                 resultsWithPct[0] = squid3RoundedToSize(results[0][0] / (isAge ? 1.0e6 : 1.0), sigDigits);
                                 resultsWithPct[1] = squid3RoundedToSize(results[0][1] / (isAge ? 1.0e6 : 1.0), sigDigits);
                                 resultsWithPct[2] = calcPercentUnct(results[0]);
+                            } else {
+                                resultsWithPct = new double[resultLabels[0].length];
+                                resultsWithPct[0] = squid3RoundedToSize(results[0][0] / (isAge ? 1.0e6 : 1.0), sigDigits);
+                                resultsWithPct[1] = squid3RoundedToSize(results[0][1] / (isAge ? 1.0e6 : 1.0), sigDigits);
+                                for (int i = 2; i < resultLabels[0].length; i++) {
+                                    resultsWithPct[i] = results[0][i];
+                                }
                             }
 
                             Formatter formatter = new Formatter();
@@ -813,9 +815,9 @@ public class SquidReportSettingsController implements Initializable {
                                 sb.append("NaN");
                             } else {
                                 for (int i = 0; i < resultsWithPct.length; i++) {
-                                    formatter.format("% 20.14" + (String) ((i == 2) ? "f   " : "E   "), squid3RoundedToSize(resultsWithPct[i], sigDigits));
+                                    formatter.format("% 20.14" + (((i == 2) && resultLabels[0].length == 3) ? "f   " : "E   "), squid3RoundedToSize(resultsWithPct[i], sigDigits));
                                 }
-                                sb.append(formatter.toString());
+                                sb.append(formatter);
                             }
                         }
                         sb.append("\n");
@@ -841,20 +843,8 @@ public class SquidReportSettingsController implements Initializable {
                         Formatter formatter = new Formatter();
 
                         formatter.format("%1$-20s   ", squid3RoundedToSize(results[0][0], sigDigits));
-                        sb.append(formatter.toString());
+                        sb.append(formatter);
                     }
-
-//                    try {
-//                        double[][] results
-//                                = Arrays.stream(spot.getTaskExpressionsEvaluationsPerSpot().get(expTree)).toArray(double[][]::new);
-//                        for (int i = 0; i < results[0].length; i++) {
-//                            try {
-//                                sb.append(String.format("%1$-" + 20 + "s", squid3RoundedToSize(results[0][i], sigDigits)));
-//                            } catch (Exception e) {
-//                            }
-//                        }
-//                    } catch (Exception e) {
-//                    }
                     sb.append("\n");
                 }
             } else {
@@ -867,8 +857,6 @@ public class SquidReportSettingsController implements Initializable {
 
                 for (ShrimpFractionExpressionInterface spot : spots) {
                     sb.append(String.format("%1$-" + 18 + "s", spot.getFractionID()));
-//                    // force evaluation
-//                    ((Task) task).evaluateTaskExpression(expTree);
 
                     // check for special text metadata
                     if (spot.getTaskExpressionsMetaDataPerSpot().get(expTree) != null) {
@@ -885,7 +873,7 @@ public class SquidReportSettingsController implements Initializable {
                             } else {
                                 Formatter formatter = new Formatter();
                                 formatter.format("%1$-" + 20 + "s", squid3RoundedToSize(results[0][0], sigDigits));
-                                sb.append(formatter.toString());
+                                sb.append(formatter);
                             }
 
                         } catch (Exception e) {
@@ -1008,11 +996,10 @@ public class SquidReportSettingsController implements Initializable {
     }
 
     private List<SquidReportTableInterface> getTables() {
-
         List<SquidReportTableInterface> tables
                 = isRefMat
-                        ? task.getSquidReportTablesRefMat()
-                        : task.getSquidReportTablesUnknown();
+                ? task.getSquidReportTablesRefMat()
+                : task.getSquidReportTablesUnknown();
 
         SquidReportTableInterface defaultLabDataRT;
         if (isRefMat) {
@@ -1054,6 +1041,11 @@ public class SquidReportSettingsController implements Initializable {
         SquidReportTableInterface table = reportTableCB.getSelectionModel().getSelectedItem().copy();
         LinkedList<SquidReportCategoryInterface> cats = new LinkedList<>();
         categoryListView.getItems().forEach(cat -> cats.add(cat.clone()));
+        if (isRefMat) {
+            table.setReportSpotTarget(SpotTypes.REFERENCE_MATERIAL);
+        } else {
+            table.setReportSpotTarget(SpotTypes.UNKNOWN);
+        }
         table.setReportCategories(cats);
         table.setIsBuiltInSquidDefault(false);
         table.setIsLabDataDefault(false);
@@ -1087,6 +1079,11 @@ public class SquidReportSettingsController implements Initializable {
                 SquidMessageDialog.showWarningDialog("A Squid3 Report Model with the name you entered already exists. Please try again.", primaryStageWindow);
             } else {
                 SquidReportTableInterface table = SquidReportTable.createEmptySquidReportTable(name);
+                if (isRefMat) {
+                    table.setReportSpotTarget(SpotTypes.REFERENCE_MATERIAL);
+                } else {
+                    table.setReportSpotTarget(SpotTypes.UNKNOWN);
+                }
                 table.setIsLabDataDefault(false);
                 getTables().add(table);
                 populateSquidReportTableChoiceBox();
@@ -1157,9 +1154,10 @@ public class SquidReportSettingsController implements Initializable {
     @FXML
     private void exportOnAction(ActionEvent event) {
         try {
-            File file = FileHandler.saveSquidReportModelXMLFile(createCopyOfUpdatedSquidReportTable(), primaryStageWindow);
+            SquidReportTable table = (SquidReportTable) createCopyOfUpdatedSquidReportTable();
+            File file = FileHandler.saveSquidReportModelXMLFile(table, primaryStageWindow);
             if (file != null) {
-                reportTableCB.getSelectionModel().getSelectedItem().serializeXMLObject(file.getAbsolutePath());
+                table.serializeXMLObject(file.getAbsolutePath());
             }
         } catch (Exception e) {
             SquidMessageDialog.showWarningDialog(e.getMessage(), primaryStageWindow);
@@ -1170,17 +1168,39 @@ public class SquidReportSettingsController implements Initializable {
     @FXML
     private void importOnAction(ActionEvent event) {
         File file = null;
+        SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
         try {
             file = FileHandler.selectSquidReportModelXMLFile(primaryStageWindow);
-        } catch (IOException e) {
-            SquidMessageDialog.showWarningDialog(e.getMessage(), primaryStageWindow);
-        }
-        if (file != null) {
+            final Schema schema = sf.newSchema(new File(URL_STRING_FOR_SQUIDREPORTTABLE_XML_SCHEMA_LOCAL));
+            validateXML(file, schema, XML_HEADER_FOR_SQUIDREPORTTABLE_FILES_USING_LOCAL_SCHEMA);
             SquidReportTableInterface temp = SquidReportTable.createEmptySquidReportTable("");
-            final SquidReportTableInterface table = (SquidReportTableInterface) ((SquidReportTable) temp).readXMLObject(file.getAbsolutePath(), false);
-            if (table != null) {
+            // Read object if XML validates against schema
+            final SquidReportTableInterface IMPORTED_TABLE = (SquidReportTableInterface) temp.readXMLObject(file.getAbsolutePath(), false);
+            if (IMPORTED_TABLE != null) {
+                IMPORTED_TABLE.setIsLabDataDefault(false); // Not serialized, so initialize to false and let user decide if table should be lab data default
+                // Switch radio button to spot target of imported report table if necessary
+                boolean switchButton = false;
+                if (isRefMat && !IMPORTED_TABLE.getReportSpotTarget().equals(SpotTypes.REFERENCE_MATERIAL)) {
+                    isRefMat = false;
+                    unknownsRadioButton.fire();
+                    switchButton = true;
+                } else if (!isRefMat && IMPORTED_TABLE.getReportSpotTarget().equals(SpotTypes.REFERENCE_MATERIAL)) {
+                    isRefMat = true;
+                    refMatRadioButton.fire();
+                    switchButton = true;
+                }
+
+                if (switchButton) {
+                    populateSquidReportTableChoiceBox();
+                    selectSquidReportTableByPriors();
+                    populateExpressionListViews();
+                    populateIsotopesListView();
+                    populateRatiosListView();
+                    populateSpotMetaDataListView();
+                } // End switch button
+
                 final List<SquidReportTableInterface> tables = getTables();
-                int indexOfSameNameTable = tables.indexOf(table);
+                int indexOfSameNameTable = tables.indexOf(IMPORTED_TABLE);
                 if (indexOfSameNameTable >= 0) {
                     SquidReportTableInterface sameNameTable = tables.get(indexOfSameNameTable);
 
@@ -1205,13 +1225,13 @@ public class SquidReportSettingsController implements Initializable {
                     alert.setY(SquidUI.primaryStageWindow.getY() + (SquidUI.primaryStageWindow.getHeight() - 150) / 2);
                     alert.showAndWait().ifPresent((t) -> {
                         if (t.equals(replace)) {
-                            tables.set(indexOfSameNameTable, table);
+                            tables.set(indexOfSameNameTable, IMPORTED_TABLE);
                             populateSquidReportTableChoiceBox();
-                            reportTableCB.getSelectionModel().select(table);
+                            reportTableCB.getSelectionModel().select(IMPORTED_TABLE);
                         } else if (t.equals(rename)) {
-                            TextInputDialog dialog = new TextInputDialog(table.getReportTableName());
+                            TextInputDialog dialog = new TextInputDialog(IMPORTED_TABLE.getReportTableName());
                             dialog.setTitle("Rename");
-                            dialog.setHeaderText("Rename " + table.getReportTableName());
+                            dialog.setHeaderText("Rename " + IMPORTED_TABLE.getReportTableName());
                             dialog.setContentText("Enter the new Squid3 Report Model's name:");
                             Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
                             TextField newName = null;
@@ -1222,31 +1242,36 @@ public class SquidReportSettingsController implements Initializable {
                             }
                             if (okBtn != null && newName != null) {
                                 newName.textProperty().addListener((observable, oldValue, newValue) -> {
-                                    table.setReportTableName(newValue);
-                                    okBtn.setDisable(tables.contains(table) || newValue.isEmpty());
+                                    IMPORTED_TABLE.setReportTableName(newValue);
+                                    okBtn.setDisable(tables.contains(IMPORTED_TABLE) || newValue.isEmpty());
                                 });
                             }
                             dialog.setX(SquidUI.primaryStageWindow.getX() + (SquidUI.primaryStageWindow.getWidth() - 200) / 2);
                             dialog.setY(SquidUI.primaryStageWindow.getY() + (SquidUI.primaryStageWindow.getHeight() - 150) / 2);
                             Optional<String> result = dialog.showAndWait();
                             if (result.isPresent()) {
-                                table.setReportTableName(result.get());
-                                if (tables.contains(table)) {
+                                IMPORTED_TABLE.setReportTableName(result.get());
+                                if (tables.contains(IMPORTED_TABLE)) {
                                     SquidMessageDialog.showWarningDialog("A Squid3 Report Model already exists with this name.", primaryStageWindow);
                                 } else {
-                                    tables.add(table);
+                                    tables.add(IMPORTED_TABLE);
                                     populateSquidReportTableChoiceBox();
-                                    reportTableCB.getSelectionModel().select(table);
+                                    reportTableCB.getSelectionModel().select(IMPORTED_TABLE);
                                 }
                             }
                         }
                     });
                 } else {
-                    tables.add(table);
+                    tables.add(IMPORTED_TABLE);
                     populateSquidReportTableChoiceBox();
-                    reportTableCB.getSelectionModel().select(table);
+                    reportTableCB.getSelectionModel().select(IMPORTED_TABLE);
                 }
+            } else {
+                SquidMessageDialog.showWarningDialog("Unable to import. Could not be validated against XML schema.", primaryStageWindow);
             }
+        } catch (SAXException | IOException | ArrayIndexOutOfBoundsException e) {
+            SquidMessageDialog.showWarningDialog("Unable to import. Could not be validated against XML schema.", primaryStageWindow);
+            // Another message here to describe why failure occured?
         }
     }
 
@@ -1275,8 +1300,14 @@ public class SquidReportSettingsController implements Initializable {
             SquidReportTableInterface table = createCopyOfUpdatedSquidReportTable();
             if (table.amWeightedMeanPlotAndSortReport()) {
                 table.formatWeightedMeanPlotAndSortReport();
-                Task.squidLabData.setSpecialWMSortingReportTable(table);
+                if (table.getReportSpotTarget().equals(SpotTypes.UNKNOWN)) {
+                    Task.squidLabData.setSpecialWMSortingReportTable(table);
+                } else {
+                    Task.squidLabData.setSpecialRMWMSortingReportTable(table);
+                }
+                Task.squidLabData.storeState();
             }
+
             List<SquidReportTableInterface> tables = getTables();
             int location = tables.indexOf(table);
             if (location >= 0) {
@@ -1285,7 +1316,7 @@ public class SquidReportSettingsController implements Initializable {
                 tables.add(table);
             }
 
-            if (currTable.isIsLabDataDefault()){
+            if (currTable.isIsLabDataDefault()) {
                 table.setIsLabDataDefault(true);
                 currTable.setIsLabDataDefault(false);
             }
@@ -1300,6 +1331,7 @@ public class SquidReportSettingsController implements Initializable {
             populateSquidReportTableChoiceBox();
             reportTableCB.getSelectionModel().select(table);
             isEditing.setValue(false);
+            Task.squidLabData.storeState();
         }
 
         if (squidProject != null) {
@@ -1376,6 +1408,50 @@ public class SquidReportSettingsController implements Initializable {
             // show new notation for default
             populateSquidReportTableChoiceBox();
             selectSquidReportTableByPriors();
+        }
+    }
+
+    private List<String> getSelectedExpressionStrings(ListView<String> listView) {
+        // Return the list of selected expressions in ArrayList, so it is
+        // serializable and can be stored in a Dragboard.
+        List<String> list = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+
+        return list;
+    }
+
+    private List<Expression> getSelectedExpressions(ListView<Expression> listView) {
+        // Return the list of selected expressions in ArrayList, so it is
+        // serializable and can be stored in a Dragboard.
+        List<Expression> list = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+
+        return list;
+    }
+
+    @FXML
+    private void createCategoryOnAction(ActionEvent event) {
+        createCategory();
+    }
+
+    private void createCategory() {
+        String catName = categoryTextField.getText();
+
+        if (catName.isEmpty()) {
+            SquidMessageDialog.showWarningDialog("Please enter a non-empty name.", primaryStageWindow);
+        } else {
+            List<String> catNames = new ArrayList<>(categoryListView.getItems().size());
+            categoryListView.getItems().forEach(cat -> catNames.add(cat.getDisplayName()));
+            if (catNames.contains(catName)) {
+                SquidMessageDialog.showWarningDialog("A category exists with the specified name.", primaryStageWindow);
+            } else {
+                SquidReportCategoryInterface cat = SquidReportCategory.createReportCategory(catName);
+                categoryListView.getItems().add(cat);
+                int catIndex = categoryListView.getItems().indexOf(cat);
+                categoryListView.getSelectionModel().select(catIndex);
+                categoryListView.scrollTo(catIndex);
+                categoryListView.getFocusModel().focus(catIndex);
+                isEditing.setValue(true);
+                categoryTextField.setText("");
+            }
         }
     }
 
@@ -1495,7 +1571,7 @@ public class SquidReportSettingsController implements Initializable {
                 } else if (event.isSecondaryButtonDown()) {
                     ContextMenu contextMenu = new ContextMenu();
 
-                    // special case prevent showing if one of three base categories in Weighted Mean Plot Sort Table 
+                    // special case prevent showing if one of three base categories in Weighted Mean Plot Sort Table
                     showContextMenu = true;
                     if (reportTableCB.getSelectionModel().getSelectedItem().amWeightedMeanPlotAndSortReport()) {
                         if ((cell.getItem().getDisplayName().compareTo("Time") == 0)
@@ -1925,52 +2001,6 @@ public class SquidReportSettingsController implements Initializable {
             return cell;
         }
 
-    }
-
-    static final DataFormat STRING_LIST = new DataFormat("StringList");
-
-    private List<String> getSelectedExpressionStrings(ListView<String> listView) {
-        // Return the list of selected expressions in ArrayList, so it is
-        // serializable and can be stored in a Dragboard.
-        List<String> list = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
-
-        return list;
-    }
-
-    private List<Expression> getSelectedExpressions(ListView<Expression> listView) {
-        // Return the list of selected expressions in ArrayList, so it is
-        // serializable and can be stored in a Dragboard.
-        List<Expression> list = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
-
-        return list;
-    }
-
-    @FXML
-    private void createCategoryOnAction(ActionEvent event) {
-        createCategory();
-    }
-
-    private void createCategory() {
-        String catName = categoryTextField.getText();
-
-        if (catName.isEmpty()) {
-            SquidMessageDialog.showWarningDialog("Please enter a non-empty name.", primaryStageWindow);
-        } else {
-            List<String> catNames = new ArrayList<>(categoryListView.getItems().size());
-            categoryListView.getItems().forEach(cat -> catNames.add(cat.getDisplayName()));
-            if (catNames.contains(catName)) {
-                SquidMessageDialog.showWarningDialog("A category exists with the specified name.", primaryStageWindow);
-            } else {
-                SquidReportCategoryInterface cat = SquidReportCategory.createReportCategory(catName);
-                categoryListView.getItems().add(cat);
-                int catIndex = categoryListView.getItems().indexOf(cat);
-                categoryListView.getSelectionModel().select(catIndex);
-                categoryListView.scrollTo(catIndex);
-                categoryListView.getFocusModel().focus(catIndex);
-                isEditing.setValue(true);
-                categoryTextField.setText("");
-            }
-        }
     }
 
 }

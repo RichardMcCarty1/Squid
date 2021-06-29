@@ -19,29 +19,25 @@ import com.thoughtworks.xstream.XStream;
 import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumn;
 import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumnInterface;
 import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumnXMLConverter;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import org.cirdles.squid.tasks.expressions.Expression;
-
 import org.cirdles.squid.tasks.expressions.builtinExpressions.BuiltInExpressionsDataDictionary;
+import org.cirdles.squid.tasks.expressions.builtinExpressions.ReferenceMaterialAgeTypesEnum;
 import org.cirdles.squid.tasks.expressions.builtinExpressions.SampleAgeTypesEnum;
 import org.cirdles.squid.utilities.IntuitiveStringComparator;
+
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @author James F. Bowring, CIRDLES.org, and Earth-Time.org
  */
+
 public class SquidReportCategory implements Serializable, SquidReportCategoryInterface {
 
     private static final long serialVersionUID = 8741573410884399160L;
 
-    public static final List<SquidReportCategory> defaultSquidReportCategories = new ArrayList<>();
+    public static final List<SquidReportCategory> defaultSampleWMSortingCategories = new ArrayList<>();
     public static final List<SquidReportCategory> defaultRefMatWMSortingCategories = new ArrayList<>();
+    public static final List<SquidReportCategory> defaultRefMatCalibrationConstantSortingCategories = new ArrayList<>();
 
     static {
 
@@ -52,8 +48,9 @@ public class SquidReportCategory implements Serializable, SquidReportCategoryInt
         column = SquidReportColumn.createSquidReportColumn("Hours");
         categoryColumns.add(column);
         time.setCategoryColumns(categoryColumns);
-        defaultSquidReportCategories.add(time);
+        defaultSampleWMSortingCategories.add(time);
         defaultRefMatWMSortingCategories.add(time);
+        defaultRefMatCalibrationConstantSortingCategories.add(time);
 
         SquidReportCategory ages = createReportCategory("Ages");
         categoryColumns = new LinkedList<>();
@@ -62,7 +59,16 @@ public class SquidReportCategory implements Serializable, SquidReportCategoryInt
             categoryColumns.add(column);
         }
         ages.setCategoryColumns(categoryColumns);
-        defaultSquidReportCategories.add(ages);
+        defaultSampleWMSortingCategories.add(ages);
+
+        SquidReportCategory agesRM = createReportCategory("Ages");
+        categoryColumns = new LinkedList<>();
+        for (ReferenceMaterialAgeTypesEnum referenceMaterialAgeType : ReferenceMaterialAgeTypesEnum.values()) {
+            column = SquidReportColumn.createSquidReportColumn(referenceMaterialAgeType.getExpressionName());
+            categoryColumns.add(column);
+        }
+        agesRM.setCategoryColumns(categoryColumns);
+        defaultRefMatWMSortingCategories.add(agesRM);
 
         // raw ratios will be populated on the fly from task with the exception of the required ratios
         SquidReportCategory rawRatios = createReportCategory("Raw Ratios");
@@ -72,8 +78,9 @@ public class SquidReportCategory implements Serializable, SquidReportCategoryInt
             categoryColumns.add(column);
         }
         rawRatios.setCategoryColumns(categoryColumns);
-        defaultSquidReportCategories.add(rawRatios);
+        defaultSampleWMSortingCategories.add(rawRatios);
         defaultRefMatWMSortingCategories.add(rawRatios);
+        defaultRefMatCalibrationConstantSortingCategories.add(rawRatios);
 
         SquidReportCategory correctedRatios = createReportCategory("Corr. Ratios");
         categoryColumns = new LinkedList<>();
@@ -82,13 +89,24 @@ public class SquidReportCategory implements Serializable, SquidReportCategoryInt
             categoryColumns.add(column);
         }
         correctedRatios.setCategoryColumns(categoryColumns);
-        defaultSquidReportCategories.add(correctedRatios);
+        defaultSampleWMSortingCategories.add(correctedRatios);
+
+        correctedRatios = createReportCategory("Corr. Ratios");
+        categoryColumns = new LinkedList<>();
+        for (String ratioName : BuiltInExpressionsDataDictionary.CORRECTED_RATIOS_EXPRESSION_NAMES) {
+            column = SquidReportColumn.createSquidReportColumn(ratioName + "_RM");
+            categoryColumns.add(column);
+        }
+        correctedRatios.setCategoryColumns(categoryColumns);
+        defaultRefMatWMSortingCategories.add(correctedRatios);
 
     }
 
     // Fields
     private String displayName;
+
     private LinkedList<SquidReportColumnInterface> categoryColumns;
+
     private boolean visible;
 
     private SquidReportCategory() {
@@ -206,4 +224,5 @@ public class SquidReportCategory implements Serializable, SquidReportCategoryInt
     public int hashCode() {
         return Objects.hash(getDisplayName(), getCategoryColumns(), isVisible());
     }
+
 }

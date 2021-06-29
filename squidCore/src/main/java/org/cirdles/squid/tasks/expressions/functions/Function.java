@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2016 James F. Bowring and CIRDLES.org.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,18 +17,19 @@ package org.cirdles.squid.tasks.expressions.functions;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
+import org.cirdles.squid.tasks.expressions.OperationOrFunctionInterface;
+import org.cirdles.squid.utilities.xmlSerialization.XMLSerializerInterface;
+
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
-import org.cirdles.squid.tasks.expressions.OperationOrFunctionInterface;
+
 import static org.cirdles.squid.utilities.conversionUtilities.CloningUtilities.clone2dArray;
-import org.cirdles.squid.utilities.xmlSerialization.XMLSerializerInterface;
 
 /**
- *
  * @author James F. Bowring
  */
 @XStreamAlias("Operation")
@@ -38,59 +39,17 @@ public abstract class Function
         Serializable,
         XMLSerializerInterface {
 
-    private static final long serialVersionUID = 5737437390502874465L;
-
-    /**
-     *
-     */
-    protected String name;
-
-    /**
-     *
-     */
-    protected int argumentCount;
-
-    /**
-     *
-     */
-    protected int precedence;
-    // establish size of array resulting from evaluation
-
-    /**
-     *
-     */
-    protected int rowCount;
-
-    /**
-     *
-     */
-    protected int colCount;
-
-    /**
-     *
-     */
-    protected String[][] labelsForOutputValues = new String[][]{{}};
-
-    /**
-     *
-     */
-    protected String[] labelsForInputValues = new String[]{};
-
-    protected String definition;
-
-    protected boolean summaryCalc;
-
     /**
      *
      */
     public static final Map<String, String> FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-
     public static final Map<String, String> MATH_FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     public static final Map<String, String> SQUID_COMMMON_FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     public static final Map<String, String> SQUID_FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    // establish size of array resulting from evaluation
     public static final Map<String, String> LOGIC_FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-
     public static final Map<String, String> ALIASED_FUNCTIONS_MAP = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private static final long serialVersionUID = 5737437390502874465L;
 
     static {
 
@@ -121,6 +80,7 @@ public abstract class Function
         SQUID_FUNCTIONS_MAP.put("TotalCps", "totalCps");
         SQUID_FUNCTIONS_MAP.put("TotalCpsTime", "totalCpsTime");
         SQUID_FUNCTIONS_MAP.put("WtdMeanACalc", "wtdMeanACalc");
+        SQUID_FUNCTIONS_MAP.put("Orig", "orig");
 
         LOGIC_FUNCTIONS_MAP.put("and", "and");
         LOGIC_FUNCTIONS_MAP.put("or", "or");
@@ -158,6 +118,37 @@ public abstract class Function
 
     }
 
+    /**
+     *
+     */
+    protected String name;
+    /**
+     *
+     */
+    protected int argumentCount;
+    /**
+     *
+     */
+    protected int precedence;
+    /**
+     *
+     */
+    protected int rowCount;
+    /**
+     *
+     */
+    protected int colCount;
+    /**
+     *
+     */
+    protected String[][] labelsForOutputValues = new String[][]{{}};
+    /**
+     *
+     */
+    protected String[] labelsForInputValues = new String[]{};
+    protected String definition;
+    protected boolean summaryCalc;
+
     public Function() {
         this.definition = "todo";
     }
@@ -177,16 +168,6 @@ public abstract class Function
     }
 
     /**
-     *
-     * @param xstream
-     */
-    @Override
-    public void customizeXstream(XStream xstream) {
-        xstream.registerConverter(new FunctionXMLConverter());
-    }
-
-    /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface ln() {
@@ -194,7 +175,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface log() {
@@ -202,7 +182,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface sqrt() {
@@ -210,7 +189,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface exp() {
@@ -218,7 +196,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface robReg() {
@@ -226,7 +203,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface sqBiweight() {
@@ -234,7 +210,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface biweight() {
@@ -242,7 +217,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface sqWtdAv() {
@@ -250,7 +224,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface wtdAv() {
@@ -258,7 +231,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface agePb76() {
@@ -266,7 +238,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface agePb76WithErr() {
@@ -274,7 +245,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface age7corrWithErr() {
@@ -282,7 +252,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface age8corrWithErr() {
@@ -290,7 +259,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface age7CorrPb8Th2WithErr() {
@@ -298,7 +266,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface rad8corPb7U5WithErr() {
@@ -306,7 +273,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface rad8corConcRho() {
@@ -314,7 +280,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface pb76() {
@@ -322,7 +287,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface pb46cor7() {
@@ -330,7 +294,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface pb46cor8() {
@@ -338,7 +301,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface pb206U238rad() {
@@ -346,7 +308,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface stdPb86radCor7per() {
@@ -354,7 +315,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface pb86radCor7per() {
@@ -362,7 +322,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface concordiaTW() {
@@ -370,7 +329,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface concordia() {
@@ -378,7 +336,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface and() {
@@ -386,7 +343,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface or() {
@@ -394,7 +350,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface sqIf() {
@@ -402,7 +357,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface not() {
@@ -418,7 +372,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface max() {
@@ -426,7 +379,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface min() {
@@ -434,7 +386,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface abs() {
@@ -442,7 +393,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface average() {
@@ -450,7 +400,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface median() {
@@ -458,7 +407,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface sum() {
@@ -466,7 +414,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface count() {
@@ -474,7 +421,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface tinv() {
@@ -482,7 +428,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface round() {
@@ -490,7 +435,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface stdev() {
@@ -498,7 +442,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface stdevp() {
@@ -513,8 +456,11 @@ public abstract class Function
         return new WtdMeanACalc();
     }
 
+    public static OperationOrFunctionInterface orig() {
+        return new Orig();
+    }
+
     /**
-     *
      * @return
      */
     public static OperationOrFunctionInterface valueModel() {
@@ -522,7 +468,6 @@ public abstract class Function
     }
 
     /**
-     *
      * @param myOperationName
      * @return
      */
@@ -533,8 +478,8 @@ public abstract class Function
         if (operationName != null) {
             try {
                 method = Function.class.getMethod(//
-                        operationName,
-                        new Class[0]);
+                        operationName
+                );
                 retVal = (Function) method.invoke(null, new Object[0]);
             } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException noSuchMethodException) {
                 //System.out.println(noSuchMethodException.getMessage());
@@ -544,19 +489,30 @@ public abstract class Function
     }
 
     /**
-     *
+     * @param xstream
+     */
+    @Override
+    public void customizeXstream(XStream xstream) {
+        xstream.registerConverter(new FunctionXMLConverter());
+    }
+
+    /**
      * @param columnVector
      * @param colIndex
      * @return
      */
     protected double[] transposeColumnVectorOfDoubles(Object[][] columnVector, int colIndex) {
         double[] rowVector = new double[columnVector.length];
-        for (int i = 0; i < rowVector.length; i++) {
-            if (columnVector[i][colIndex] instanceof Integer) {
-                rowVector[i] = (double) (Integer)columnVector[i][colIndex];
-            } else {
-                rowVector[i] = (double) columnVector[i][colIndex];
+
+        try {
+            for (int i = 0; i < rowVector.length; i++) {
+                if (columnVector[i][colIndex] instanceof Integer) {
+                    rowVector[i] = (double) (Integer) columnVector[i][colIndex];
+                } else {
+                    rowVector[i] = (double) columnVector[i][colIndex];
+                }
             }
+        } catch (ClassCastException | ArrayIndexOutOfBoundsException e) {
         }
 
         return rowVector;

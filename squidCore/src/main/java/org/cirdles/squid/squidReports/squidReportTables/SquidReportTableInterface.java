@@ -15,29 +15,35 @@
  */
 package org.cirdles.squid.squidReports.squidReportTables;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import org.cirdles.squid.shrimp.ShrimpFractionExpressionInterface;
 import org.cirdles.squid.squidReports.squidReportCategories.SquidReportCategoryInterface;
 import org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumnInterface;
-import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.HEADER_ROW_COUNT;
 import org.cirdles.squid.tasks.TaskInterface;
 import org.cirdles.squid.utilities.xmlSerialization.XMLSerializerInterface;
 
+import java.util.*;
+
+import static org.cirdles.squid.constants.Squid3Constants.SpotTypes;
+import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.HEADER_ROW_COUNT;
+
 /**
- *
  * @author James F. Bowring, CIRDLES.org, and Earth-Time.org
  */
 public interface SquidReportTableInterface extends XMLSerializerInterface {
 
-    public default String[][] reportSpotsInCustomTable(
+    default String[][] reportSpotsInCustomTable(
             SquidReportTableInterface squidReportTable,
             TaskInterface task,
-            List<ShrimpFractionExpressionInterface> spots) {
+            Map<String, List<ShrimpFractionExpressionInterface>> mySamples,
+            boolean showSampleNames) {
 
-        String[][] retVal = new String[spots.size() + HEADER_ROW_COUNT][];
+        int sizeOfArray = 0;
+        for (Map.Entry<String, List<ShrimpFractionExpressionInterface>> entry : mySamples.entrySet()) {
+            List<ShrimpFractionExpressionInterface> mySpots = entry.getValue();
+            sizeOfArray += mySpots.size();
+        }
+
+        String[][] retVal = new String[sizeOfArray + HEADER_ROW_COUNT + (showSampleNames ? mySamples.size() : 0)][];
 
         // process columns
         List<SquidReportColumnInterface> columns = new ArrayList<>();
@@ -92,14 +98,19 @@ public interface SquidReportTableInterface extends XMLSerializerInterface {
         retVal[0][0] = Integer.toString(HEADER_ROW_COUNT);
         int fractionRowCount = HEADER_ROW_COUNT;
 
-        for (ShrimpFractionExpressionInterface spot : spots) {
-            retVal[fractionRowCount][0] = "true";//included
-            retVal[fractionRowCount][2] = spot.getFractionID();
-            // detect aliquot
-            if (spot.getSpotNumber() < 0) {
-                retVal[fractionRowCount][1] = spot.getFractionID();
-            } else {
+        for (Map.Entry<String, List<ShrimpFractionExpressionInterface>> entry : mySamples.entrySet()) {
+            List<ShrimpFractionExpressionInterface> mySpots = entry.getValue();
 
+            retVal[fractionRowCount][0] = "true";
+            retVal[fractionRowCount][1] = "";
+            retVal[fractionRowCount][2] = entry.getKey();
+            fractionRowCount++;
+
+            for (ShrimpFractionExpressionInterface spot : mySpots) {
+                retVal[fractionRowCount][0] = "true";//included
+                retVal[fractionRowCount][2] = spot.getFractionID();
+
+                retVal[fractionRowCount][1] = entry.getKey();
                 retVal[fractionRowCount][countOfAllColumns - 2] = spot.getFractionID();
 
                 retVal[fractionRowCount][countOfAllColumns - 1] = "false";
@@ -109,63 +120,73 @@ public interface SquidReportTableInterface extends XMLSerializerInterface {
                     retVal[fractionRowCount][columnIndex] = col.cellEntryForSpot(spot);
                     columnIndex++;
                 }
+//            }
+                fractionRowCount++;
             }
-            fractionRowCount++;
         }
-
         return retVal;
     }
 
     /**
      * @return the reportTableName
      */
-    public String getReportTableName();
+    String getReportTableName();
 
     /**
      * @param reportTableName the reportTableName to set
      */
-    public void setReportTableName(String reportTableName);
-    
-    public SquidReportTableInterface copy();
+    void setReportTableName(String reportTableName);
 
-    public boolean amWeightedMeanPlotAndSortReport();
+    SquidReportTableInterface copy();
 
-    public void formatWeightedMeanPlotAndSortReport();
+    boolean amWeightedMeanPlotAndSortReport();
+
+    void formatWeightedMeanPlotAndSortReport();
 
     /**
      * @return the reportCategories
      */
-    public LinkedList<SquidReportCategoryInterface> getReportCategories();
+    LinkedList<SquidReportCategoryInterface> getReportCategories();
 
     /**
      * @param reportCategories the reportCategories to set
      */
-    public void setReportCategories(LinkedList<SquidReportCategoryInterface> reportCategories);
+    void setReportCategories(LinkedList<SquidReportCategoryInterface> reportCategories);
 
-    public void setIsBuiltInSquidDefault(boolean isDefault);
+    /**
+     * @return the reportSpotTarget
+     */
+    SpotTypes getReportSpotTarget();
 
-    public boolean isDefault();
+    /**
+     * @param reportSpotTarget the reportSpotTarget to set
+     */
+    void setReportSpotTarget(SpotTypes reportSpotTarget);
+
+    void setIsBuiltInSquidDefault(boolean isDefault);
+
+    boolean isDefault();
 
     /**
      * @return the isLabDataDefault
      */
-    public boolean isIsLabDataDefault();
+    boolean isIsLabDataDefault();
 
     /**
      * @param isLabDataDefault the isLabDataDefault to set
      */
-    public void setIsLabDataDefault(boolean isLabDataDefault);
+    void setIsLabDataDefault(boolean isLabDataDefault);
 
-    public boolean equals(Object ob);
+    boolean equals(Object ob);
 
     /**
      * @return the version
      */
-    public int getVersion();
+    int getVersion();
 
     /**
      * @param version the version to set
      */
-    public void setVersion(int version);
+    void setVersion(int version);
 
 }

@@ -7,9 +7,11 @@ package org.cirdles.squid.utilities.stateUtilities;
 
 import org.cirdles.squid.exceptions.SquidException;
 import org.cirdles.squid.parameters.ParametersModelComparator;
+import org.cirdles.squid.parameters.parameterModels.ParametersModel;
 import org.cirdles.squid.parameters.parameterModels.commonPbModels.CommonPbModel;
 import org.cirdles.squid.parameters.parameterModels.physicalConstantsModels.PhysicalConstantsModel;
 import org.cirdles.squid.parameters.parameterModels.referenceMaterialModels.ReferenceMaterialModel;
+import org.cirdles.squid.squidReports.squidReportTables.SquidReportTableInterface;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,33 +21,27 @@ import java.util.List;
 
 import static org.cirdles.squid.constants.Squid3Constants.SQUID_LAB_DATA_SERIALIZED_NAME;
 import static org.cirdles.squid.constants.Squid3Constants.SQUID_USERS_DATA_FOLDER_NAME;
-import org.cirdles.squid.parameters.parameterModels.ParametersModel;
-import org.cirdles.squid.squidReports.squidReportTables.SquidReportTableInterface;
 
 /**
  * @author ryanb
  */
 public class SquidLabData implements Serializable {
 
-    private static final long serialVersionUID = -6819591137651731346L;
-
     public static final String SQUID2_DEFAULT_PHYSICAL_CONSTANTS_MODEL_V1 = "Squid 2.5 Physical Constants Model";
-
+    private static final long serialVersionUID = -6819591137651731346L;
+    private static final int CURRENT_VERSION = 18;
     private List<ParametersModel> referenceMaterials;
     private List<ParametersModel> physicalConstantsModels;
     private List<ParametersModel> commonPbModels;
-
     private String laboratoryName;
-
     private ParametersModel commonPbDefault;
     private ParametersModel refMatDefault;
     private ParametersModel refMatConcDefault;
     private ParametersModel physConstDefault;
-
-    private static  int CURRENT_VERSION = 18;
     private int version;
-    
+
     private SquidReportTableInterface specialWMSortingReportTable;
+    private SquidReportTableInterface specialRMWMSortingReportTable;
     private SquidReportTableInterface defaultReportTable;
     private SquidReportTableInterface defaultReportTableRM;
 
@@ -55,47 +51,14 @@ public class SquidLabData implements Serializable {
         referenceMaterials = new ArrayList<>();
         physicalConstantsModels = new ArrayList<>();
         commonPbModels = new ArrayList<>();
-        
+
         updateSquidLabData();
-    }
-
-    private void updateSquidLabData() {
-        referenceMaterials.removeAll(ReferenceMaterialModel.getDefaultModels());
-        referenceMaterials.addAll(ReferenceMaterialModel.getDefaultModels());
-        referenceMaterials.sort(new ParametersModelComparator());
-        
-        physicalConstantsModels.removeAll(PhysicalConstantsModel.getDefaultModels());
-        physicalConstantsModels.addAll(PhysicalConstantsModel.getDefaultModels());
-        physicalConstantsModels.sort(new ParametersModelComparator());
-        
-        commonPbModels.removeAll(CommonPbModel.getDefaultModels());
-        commonPbModels.addAll(CommonPbModel.getDefaultModels());
-        commonPbModels.sort(new ParametersModelComparator());
-
-        physConstDefault = PhysicalConstantsModel.getDefaultModel(SQUID2_DEFAULT_PHYSICAL_CONSTANTS_MODEL_V1, "1.0");
-        refMatDefault = ReferenceMaterialModel.getDefaultModel("z6266 ID-TIMS (559.0 Ma)", "1.0");
-        refMatConcDefault = ReferenceMaterialModel.getDefaultModel("z6266 ID-TIMS (559.0 Ma)", "1.0");
-        commonPbDefault = CommonPbModel.getDefaultModel("Stacey-Kramers@559.0Ma (z6266)", "1.0");
-
-        version = CURRENT_VERSION;
-        
-        specialWMSortingReportTable = null;
-        defaultReportTable = null;
-        defaultReportTableRM = null;
-
-        storeState();
-    }
-    
-    public void testVersionAndUpdate(){
-        if (version < CURRENT_VERSION){
-            updateSquidLabData();
-        }
     }
 
     public static SquidLabData getExistingSquidLabData() {
         SquidLabData retVal;
         try {
-            File file = new File(File.separator + System.getProperty("user.home")
+            File file = new File(File.separator + SquidPersistentState.squidUserHomeDirectory
                     + File.separator + SQUID_USERS_DATA_FOLDER_NAME + File.separator
                     + SQUID_LAB_DATA_SERIALIZED_NAME);
             if (file.exists() && !file.isDirectory()) {
@@ -114,15 +77,65 @@ public class SquidLabData implements Serializable {
         return retVal;
     }
 
-    public void storeState() {
-        try {
-            File file = new File(File.separator + System.getProperty("user.home")
-                    + File.separator + SQUID_USERS_DATA_FOLDER_NAME + File.separator
-                    + SQUID_LAB_DATA_SERIALIZED_NAME);
-            serialize(file);
-        } catch (IOException | SquidException e) {
-            e.printStackTrace();
+    public static SquidLabData deserialize(File file) throws IOException, ClassNotFoundException {
+        return (SquidLabData) SquidSerializer.getSerializedObjectFromFile(file.getAbsolutePath(), false);
+    }
+
+    private void updateSquidLabData() {
+        referenceMaterials.removeAll(ReferenceMaterialModel.getDefaultModels());
+        referenceMaterials.addAll(ReferenceMaterialModel.getDefaultModels());
+        referenceMaterials.sort(new ParametersModelComparator());
+
+        physicalConstantsModels.removeAll(PhysicalConstantsModel.getDefaultModels());
+        physicalConstantsModels.addAll(PhysicalConstantsModel.getDefaultModels());
+        physicalConstantsModels.sort(new ParametersModelComparator());
+
+        commonPbModels.removeAll(CommonPbModel.getDefaultModels());
+        commonPbModels.addAll(CommonPbModel.getDefaultModels());
+        commonPbModels.sort(new ParametersModelComparator());
+
+        physConstDefault = PhysicalConstantsModel.getDefaultModel(SQUID2_DEFAULT_PHYSICAL_CONSTANTS_MODEL_V1, "1.0");
+        refMatDefault = ReferenceMaterialModel.getDefaultModel("z6266 ID-TIMS (559.0 Ma)", "1.0");
+        refMatConcDefault = ReferenceMaterialModel.getDefaultModel("z6266 ID-TIMS (559.0 Ma)", "1.0");
+        commonPbDefault = CommonPbModel.getDefaultModel("Stacey-Kramers@559.0Ma (z6266)", "1.0");
+
+        version = CURRENT_VERSION;
+
+        specialWMSortingReportTable = null;
+        specialRMWMSortingReportTable = null;
+        defaultReportTable = null;
+        defaultReportTableRM = null;
+
+        storeState();
+    }
+
+    public void testVersionAndUpdate() {
+        if (version < CURRENT_VERSION) {
+            updateSquidLabData();
         }
+    }
+
+    public void storeState() {
+        String mySerializedName
+                = File.separator//
+                + SquidPersistentState.squidUserHomeDirectory//
+                + File.separator//
+                + SQUID_USERS_DATA_FOLDER_NAME //
+                + File.separator + SQUID_LAB_DATA_SERIALIZED_NAME;
+
+        // check if user data folder exists and create if it does not
+        File dataFolder = new File(
+                File.separator + SquidPersistentState.squidUserHomeDirectory + File.separator + SQUID_USERS_DATA_FOLDER_NAME);
+        if (!dataFolder.exists()) {
+            dataFolder.mkdir();
+        }
+
+        try {
+            SquidSerializer.serializeObjectToFile(this, mySerializedName);
+        } catch (SquidException squidException) {
+            squidException.printStackTrace();
+        }
+
     }
 
     public ParametersModel getCommonPbDefault() {
@@ -185,6 +198,10 @@ public class SquidLabData implements Serializable {
         return referenceMaterials;
     }
 
+    public void setReferenceMaterials(List<ParametersModel> referenceMaterials) {
+        this.referenceMaterials = referenceMaterials;
+    }
+
     public List<ParametersModel> getReferenceMaterialsWithNonZeroDate() {
         List<ParametersModel> filteredRM = new ArrayList<>();
         for (ParametersModel pm : referenceMaterials) {
@@ -205,10 +222,6 @@ public class SquidLabData implements Serializable {
         }
 
         return filteredRM;
-    }
-
-    public void setReferenceMaterials(List<ParametersModel> referenceMaterials) {
-        this.referenceMaterials = referenceMaterials;
     }
 
     public List<ParametersModel> getPhysicalConstantsModels() {
@@ -233,10 +246,6 @@ public class SquidLabData implements Serializable {
 
     public void setLaboratoryName(String laboratoryName) {
         this.laboratoryName = laboratoryName;
-    }
-
-    public static SquidLabData deserialize(File file) throws IOException, ClassNotFoundException {
-        return (SquidLabData) SquidSerializer.getSerializedObjectFromFile(file.getAbsolutePath(), false);
     }
 
     public void serialize(File file) throws IOException, SquidException {
@@ -324,6 +333,14 @@ public class SquidLabData implements Serializable {
         this.specialWMSortingReportTable = specialWMSortingReportTable;
     }
 
+    public SquidReportTableInterface getSpecialRMWMSortingReportTable() {
+        return specialRMWMSortingReportTable;
+    }
+
+    public void setSpecialRMWMSortingReportTable(SquidReportTableInterface specialRMWMSortingReportTable) {
+        this.specialRMWMSortingReportTable = specialRMWMSortingReportTable;
+    }
+
     /**
      * @return the defaultReportTable
      */
@@ -339,7 +356,6 @@ public class SquidLabData implements Serializable {
     }
 
     /**
-     * 
      * @return the defaultReportTableRM
      */
     public SquidReportTableInterface getDefaultReportTableRM() {
@@ -347,12 +363,11 @@ public class SquidLabData implements Serializable {
     }
 
     /**
-     * 
      * @param defaultReportTableRM the defaultReportTableRM to set
      */
     public void setDefaultReportTableRM(SquidReportTableInterface defaultReportTableRM) {
         this.defaultReportTableRM = defaultReportTableRM;
     }
-    
-    
+
+
 }

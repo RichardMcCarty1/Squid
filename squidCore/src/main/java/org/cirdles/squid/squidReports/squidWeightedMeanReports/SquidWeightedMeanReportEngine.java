@@ -17,6 +17,8 @@ package org.cirdles.squid.squidReports.squidWeightedMeanReports;
 
 import org.cirdles.squid.tasks.expressions.spots.SpotSummaryDetails;
 
+import java.util.Locale;
+
 /**
  * per @NicoleRayner Items I would like to see incorporated as headers into the
  * WM stats file: Sample Name * Value Name WM Value * 2s Err * 95% conf Err * n
@@ -49,13 +51,14 @@ public class SquidWeightedMeanReportEngine {
             }
         }
         
-        boolean isAnAge = spotSummaryDetails.getSelectedExpressionName().contains("Age");
+        boolean isAnAge = spotSummaryDetails.getExpressionTree().getName().toUpperCase(Locale.ROOT).contains("AGE");
         report.append(spotSummaryDetails.getExpressionTree().getUnknownsGroupSampleName()).append(", ");
         report.append(spotSummaryDetails.getExpressionTree().getName().split("_WM_")[0]).append(", ");
         report.append(spotSummaryDetails.getValues()[0][0] / (isAnAge ? 1e6 : 1.0)).append(", ");
         report.append(spotSummaryDetails.getValues()[0][1] / (isAnAge ? 1e6 : 1.0) * 2.0).append(", ");
         report.append(spotSummaryDetails.getValues()[0][3] / (isAnAge ? 1e6 : 1.0)).append(", ");        
         report.append(countOfIncluded).append(", ");
+        report.append(spotSummaryDetails.getRejectedIndices().length).append(", ");
         report.append(spotSummaryDetails.getValues()[0][4]).append(", ");
         report.append(spotSummaryDetails.getValues()[0][5]).append(", ");
         report.append(spotSummaryDetails.getMinProbabilityWM()).append(", ");
@@ -66,7 +69,7 @@ public class SquidWeightedMeanReportEngine {
 
     public static String makeWeightedMeanReportHeaderAsCSV() {
         StringBuilder header = new StringBuilder();
-        header.append("SampleName, WeightedMeanName, WeightedMean, 2sigma abs unct, 95% conf, n, MSWD, Prob of Fit, Min Prob, Spots");
+        header.append("SampleName, WeightedMeanName, WeightedMean, 2sigma abs unct, 95% conf, n, N (total), MSWD, Prob of Fit, Min Prob, Spots");
 
         return header.toString();
     }

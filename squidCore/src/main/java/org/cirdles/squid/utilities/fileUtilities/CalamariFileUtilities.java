@@ -22,6 +22,8 @@ import org.cirdles.squid.parameters.parameterModels.commonPbModels.CommonPbModel
 import org.cirdles.squid.parameters.parameterModels.physicalConstantsModels.PhysicalConstantsModel;
 import org.cirdles.squid.parameters.parameterModels.referenceMaterialModels.ReferenceMaterialModel;
 import org.cirdles.squid.prawn.PrawnFile;
+import org.cirdles.squid.projects.SquidProject;
+import org.cirdles.squid.tasks.Task;
 import org.cirdles.squid.tasks.expressions.ExpressionPublisher;
 import org.cirdles.squid.utilities.FileUtilities;
 
@@ -32,15 +34,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
-import static org.cirdles.squid.constants.Squid3Constants.DEMO_SQUID_PROJECTS_FOLDER;
-import static org.cirdles.squid.constants.Squid3Constants.NAME_OF_SQUID_RESOURCES_FOLDER;
-import static org.cirdles.squid.constants.Squid3Constants.SCHEMA_FOLDER;
-import static org.cirdles.squid.constants.Squid3Constants.SQUID_PARAMETER_MODELS_FOLDER;
-import org.cirdles.squid.projects.SquidProject;
+import static org.cirdles.squid.constants.Squid3Constants.*;
 import static org.cirdles.squid.utilities.FileUtilities.unpackZipFile;
-import static org.cirdles.squid.constants.Squid3Constants.LUDWIGLIBRARY_JAVADOC_FOLDER;
-import static org.cirdles.squid.constants.Squid3Constants.SQUID_TASK_LIBRARY_FOLDER;
-import org.cirdles.squid.tasks.Task;
 
 /**
  * @author bowring
@@ -327,6 +322,26 @@ public class CalamariFileUtilities {
                 } else {
                     //System.out.println("Failed to add SquidTask_ExpressionXMLSchema.xsd.");
                 }
+                
+
+                File squidTaskSchemaResource = prawnFileResourceExtractor.extractResourceAsFile("schema/SquidTask_XMLSchema.xsd");
+                File squidTaskSchema = new File(SCHEMA_FOLDER.getCanonicalPath() + File.separator + "SquidTask_XMLSchema.xsd");
+
+                if (squidTaskSchemaResource.renameTo(squidTaskSchema)) {
+                    //System.out.println("SquidTask_XMLSchema.xsd added.");
+                } else {
+                    //System.out.println("Failed to add SquidTask_XMLSchema.xsd.");
+                }
+                
+                File squidReportTableSchemaResource = prawnFileResourceExtractor.extractResourceAsFile("schema/SquidReportTable.xsd");
+                File squidReportTableSchema = new File(SCHEMA_FOLDER.getCanonicalPath() + File.separator + "SquidReportTable.xsd");
+
+                if (squidReportTableSchemaResource.renameTo(squidReportTableSchema)) {
+                    //System.out.println("SquidReportTable.xsd added.");
+                } else {
+                    //System.out.println("Failed to add SquidReportTable.xsd.");
+
+                }
             }
         } catch (IOException iOException) {
         }
@@ -339,7 +354,7 @@ public class CalamariFileUtilities {
                 FileUtilities.recursiveDelete(LUDWIGLIBRARY_JAVADOC_FOLDER.toPath());
             }
             if (LUDWIGLIBRARY_JAVADOC_FOLDER.mkdir()) {
-                File ludwigLibraryJavadocResource = Squid.SQUID_RESOURCE_EXTRACTOR.extractResourceAsFile("javadoc/LudwigLibrary-1.1.0-javadoc.jar");
+                File ludwigLibraryJavadocResource = Squid.SQUID_RESOURCE_EXTRACTOR.extractResourceAsFile("javadoc/LudwigLibrary-javadoc.jar");
                 File ludwigLibraryJavadoc = new File(LUDWIGLIBRARY_JAVADOC_FOLDER.getAbsolutePath() + File.separator + "LudwigLibraryJavadoc.jar");
 
                 if (ludwigLibraryJavadocResource.renameTo(ludwigLibraryJavadoc)) {

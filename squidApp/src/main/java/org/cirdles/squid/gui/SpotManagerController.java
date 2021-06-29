@@ -15,15 +15,6 @@
  */
 package org.cirdles.squid.gui;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.ResourceBundle;
-import java.util.function.Predicate;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -32,43 +23,36 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
-import static javafx.scene.paint.Color.BLACK;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
-import static org.cirdles.squid.constants.Squid3Constants.REF_238U235U_DEFAULT;
 import org.cirdles.squid.dialogs.SquidMessageDialog;
 import org.cirdles.squid.exceptions.SquidException;
-import static org.cirdles.squid.gui.SquidUI.primaryStageWindow;
-import static org.cirdles.squid.gui.SquidUIController.parametersLauncher;
-import static org.cirdles.squid.gui.SquidUIController.squidLabData;
-import static org.cirdles.squid.gui.SquidUIController.squidProject;
-import static org.cirdles.squid.gui.constants.Squid3GuiConstants.STYLE_MANAGER_TITLE;
 import org.cirdles.squid.gui.parameters.ParametersLauncher;
 import org.cirdles.squid.gui.parameters.ParametersManagerGUIController;
 import org.cirdles.squid.parameters.parameterModels.ParametersModel;
 import org.cirdles.squid.parameters.parameterModels.referenceMaterialModels.ReferenceMaterialModel;
-import static org.cirdles.squid.parameters.util.RadDates.age206_238r;
-import static org.cirdles.squid.parameters.util.RadDates.age207_206r;
-import static org.cirdles.squid.parameters.util.RadDates.age208_232r;
-import static org.cirdles.squid.parameters.util.ReferenceMaterialEnum.r238_235s;
 import org.cirdles.squid.prawn.PrawnFile;
 import org.cirdles.squid.prawn.PrawnFile.Run;
 import org.cirdles.squid.projects.SquidProject;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URL;
+import java.util.*;
+import java.util.function.Predicate;
+
+import static javafx.scene.paint.Color.BLACK;
+import static org.cirdles.squid.constants.Squid3Constants.REF_238U235U_DEFAULT;
+import static org.cirdles.squid.gui.SquidUI.primaryStageWindow;
+import static org.cirdles.squid.gui.SquidUIController.*;
+import static org.cirdles.squid.gui.constants.Squid3GuiConstants.STYLE_MANAGER_TITLE;
+import static org.cirdles.squid.parameters.util.RadDates.*;
+import static org.cirdles.squid.parameters.util.ReferenceMaterialEnum.r238_235s;
 
 /**
  * FXML Controller class
@@ -188,7 +172,7 @@ public class SpotManagerController implements Initializable {
         setUpParametersModelsComboBoxes();
 
         try {
-            setUpDataFile();
+            setUpDataFile(false);
         } catch (SquidException squidException) {
         }
 
@@ -230,7 +214,13 @@ public class SpotManagerController implements Initializable {
         sampleNameComboBox.getSelectionModel().selectFirst();
     }
 
-    private void setUpDataFile() throws SquidException {
+    private void setUpDataFile(boolean doReprocess) throws SquidException {
+
+        if (doReprocess) {
+            // May 2021 fixes issue #618
+            squidProject.getTask().setChanged(true);
+            squidProject.getTask().setupSquidSessionSpecsAndReduceAndReport(true);
+        }
 
         shrimpRuns = FXCollections.observableArrayList(squidProject.getPrawnFileRuns());
 
@@ -312,7 +302,7 @@ public class SpotManagerController implements Initializable {
             squidProject.removeRunsFromPrawnFile(selectedRuns);
 
             try {
-                setUpDataFile();
+                setUpDataFile(true);
             } catch (SquidException squidException) {
 
             }
@@ -408,8 +398,9 @@ public class SpotManagerController implements Initializable {
                     spotRestoreMenu.getItems().add(restoreAllSpotMenuItem);
                     restoreAllSpotMenuItem.setOnAction((evt) -> {
                         squidProject.restoreAllRunsToPrawnFile();
+
                         try {
-                            setUpDataFile();
+                            setUpDataFile(true);
                         } catch (SquidException squidException) {
                             //TODO: need message here
                         }
@@ -423,7 +414,7 @@ public class SpotManagerController implements Initializable {
                         restoreSpotMenuItem.setOnAction((evt) -> {
                             squidProject.restoreRunToPrawnFile(run);
                             try {
-                                setUpDataFile();
+                                setUpDataFile(true);
                             } catch (SquidException squidException) {
                                 //TODO: need message here
                             }
@@ -670,22 +661,12 @@ public class SpotManagerController implements Initializable {
         refMatModelComboBox.getSelectionModel().clearSelection();
         refMatModelComboBox.getSelectionModel().select(squidProject.getReferenceMaterialModel());
         refMatModelComboBox.setDisable(squidProject.getFilterForRefMatSpotNames().length() == 0);
-//        viewRMmodelButton.setDisable(squidProject.getFilterForRefMatSpotNames().length() == 0);
-//        viewRMmodelButton.setDisable(!((ReferenceMaterialModel) squidProject.getReferenceMaterialModel()).hasAtLeastOneNonZeroApparentDate());
-//
-//        refreshRMmodelButton.setDisable(squidProject.getFilterForRefMatSpotNames().length() == 0);
-//        refreshRMmodelButton.setDisable(!((ReferenceMaterialModel) squidProject.getReferenceMaterialModel()).hasAtLeastOneNonZeroApparentDate());
     }
 
     private void updateViewCM() {
         concRefMatModelComboBox.getSelectionModel().clearSelection();
         concRefMatModelComboBox.getSelectionModel().select(squidProject.getConcentrationReferenceMaterialModel());
-        concRefMatModelComboBox.setDisable(squidProject.getFilterForConcRefMatSpotNames().length() == 0);
-//        viewCMmodelButton.setDisable(squidProject.getFilterForConcRefMatSpotNames().length() == 0);
-//        viewCMmodelButton.setDisable(!((ReferenceMaterialModel) squidProject.getConcentrationReferenceMaterialModel()).hasAtLeastOneNonZeroConcentration());
-//
-//        refreshRMmodelButton2.setDisable(squidProject.getFilterForConcRefMatSpotNames().length() == 0);
-//        refreshRMmodelButton2.setDisable(!((ReferenceMaterialModel) squidProject.getConcentrationReferenceMaterialModel()).hasAtLeastOneNonZeroConcentration());
+        concRefMatModelComboBox.setDisable(squidProject.getFilterForConcRefMatSpotNames().length() == 0);;
     }
 
     private void updateConcReferenceMaterialsList(boolean updateTaskStatus) {

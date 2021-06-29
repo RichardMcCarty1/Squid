@@ -23,7 +23,6 @@ import org.cirdles.squid.tasks.TaskInterface;
 import org.cirdles.squid.tasks.expressions.expressionTrees.ExpressionTree;
 import org.cirdles.squid.tasks.expressions.expressionTrees.ExpressionTreeInterface;
 import org.cirdles.squid.tasks.expressions.isotopes.ShrimpSpeciesNode;
-import org.cirdles.squid.tasks.expressions.operations.Divide;
 import org.cirdles.squid.tasks.expressions.spots.SpotFieldNode;
 import org.cirdles.squid.tasks.expressions.variables.VariableNodeForSummary;
 
@@ -37,7 +36,6 @@ import static org.cirdles.squid.constants.Squid3Constants.PCT_UNCERTAINTY_DIRECT
 import static org.cirdles.squid.squidReports.squidReportColumns.SquidReportColumnInterface.formatBigDecimalForPublicationSigDigMode;
 import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.DEFAULT_COUNT_OF_SIGNIFICANT_DIGITS;
 import static org.cirdles.squid.squidReports.squidReportTables.SquidReportTable.HEADER_ROW_COUNT;
-import static org.cirdles.squid.tasks.expressions.builtinExpressions.BuiltInExpressionsDataDictionary.R204PB_206PB;
 
 /**
  * @author James F. Bowring, CIRDLES.org, and Earth-Time.org
@@ -53,17 +51,22 @@ public class SquidReportColumn implements Serializable, SquidReportColumnInterfa
     private transient String[] columnHeaders;
 
     private String expressionName;
+
     // used to calculate shiftPointRightCount = Squid3Constants.getUnitConversionMoveCount(units)
     private String units;
 
     // optional uncertainty column
     private SquidReportColumnInterface uncertaintyColumn;
+
     private boolean amUncertaintyColumn;
+
     // 1 sigma abs or pct if uncertainty column
     private String uncertaintyDirective;
 
     private int countOfSignificantDigits;
+
     private boolean visible;
+
     private String footnoteSpec;
 
     private SquidReportColumn(String expressionName) {
@@ -121,11 +124,7 @@ public class SquidReportColumn implements Serializable, SquidReportColumnInterfa
             expressionNameCustom = "total_" + expressionName + "_cts_/sec";
         }
 
-        amIsotopicRatio = false;
-        if (((ExpressionTree) expTree).getLeftET() instanceof ShrimpSpeciesNode) {
-            // Check for isotopic ratios
-            amIsotopicRatio = (((ExpressionTree) expTree).getOperation() instanceof Divide);
-        }
+        amIsotopicRatio = ((ExpressionTree) expTree).amIsotopicRatio();
 
         // propose column headers by splitting on underscores in name
         // row 0 is reserved for category displayname
@@ -180,7 +179,7 @@ public class SquidReportColumn implements Serializable, SquidReportColumnInterfa
 
         uncertaintyColumn = null;
         if ((uncertaintyDirective.length() == 0)
-                && expTree.builtAsValueModel()
+                && ( expTree.builtAsValueModel() || amIsotopicRatio)
 //                && (!expressionName.toUpperCase().contains("PCT"))
 //                && (!expressionName.toUpperCase().contains("ERR"))
 //                && (!expressionName.toUpperCase().contains("CONCEN"))
@@ -497,4 +496,5 @@ public class SquidReportColumn implements Serializable, SquidReportColumnInterfa
         return result;
 
     }
+
 }

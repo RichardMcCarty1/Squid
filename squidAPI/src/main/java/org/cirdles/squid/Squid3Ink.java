@@ -15,31 +15,36 @@
  */
 package org.cirdles.squid;
 
+import org.cirdles.squid.constants.Squid3Constants;
+import org.cirdles.squid.exceptions.SquidException;
+import org.cirdles.squid.parameters.ParametersModelComparator;
+import org.cirdles.squid.parameters.parameterModels.ParametersModel;
+import org.cirdles.squid.parameters.parameterModels.commonPbModels.CommonPbModel;
+import org.cirdles.squid.parameters.parameterModels.physicalConstantsModels.PhysicalConstantsModel;
+import org.cirdles.squid.parameters.parameterModels.referenceMaterialModels.ReferenceMaterialModel;
+import org.cirdles.squid.projects.Squid3ProjectBasicAPI;
+import org.cirdles.squid.projects.Squid3ProjectParametersAPI;
+import org.cirdles.squid.projects.Squid3ProjectReportingAPI;
+import org.cirdles.squid.projects.SquidProject;
+import org.cirdles.squid.tasks.Task;
+import org.cirdles.squid.tasks.TaskInterface;
+import org.cirdles.squid.tasks.taskDesign.TaskDesign;
+import org.cirdles.squid.utilities.fileUtilities.CalamariFileUtilities;
+import org.cirdles.squid.utilities.fileUtilities.ProjectFileUtilities;
+import org.cirdles.squid.utilities.stateUtilities.SquidLabData;
+import org.cirdles.squid.utilities.stateUtilities.SquidPersistentState;
+import org.cirdles.squid.utilities.stateUtilities.SquidSerializer;
+import org.xml.sax.SAXException;
+
+import javax.xml.bind.JAXBException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import javax.xml.bind.JAXBException;
+
 import static org.cirdles.squid.constants.Squid3Constants.DEMO_SQUID_PROJECTS_FOLDER;
 import static org.cirdles.squid.constants.Squid3Constants.TaskTypeEnum.GEOCHRON;
-import org.cirdles.squid.exceptions.SquidException;
-import org.cirdles.squid.parameters.ParametersModelComparator;
-import org.cirdles.squid.parameters.parameterModels.commonPbModels.CommonPbModel;
-import org.cirdles.squid.parameters.parameterModels.physicalConstantsModels.PhysicalConstantsModel;
-import org.cirdles.squid.parameters.parameterModels.referenceMaterialModels.ReferenceMaterialModel;
-import org.cirdles.squid.projects.SquidProject;
-import org.cirdles.squid.utilities.stateUtilities.SquidSerializer;
-import org.cirdles.squid.projects.Squid3ProjectBasicAPI;
-import org.cirdles.squid.projects.Squid3ProjectParametersAPI;
-import org.cirdles.squid.projects.Squid3ProjectReportingAPI;
-import org.cirdles.squid.tasks.Task;
-import org.cirdles.squid.tasks.TaskInterface;
-import org.cirdles.squid.utilities.fileUtilities.CalamariFileUtilities;
-import org.cirdles.squid.utilities.fileUtilities.ProjectFileUtilities;
 import static org.cirdles.squid.utilities.fileUtilities.ZipUtility.extractZippedFile;
-import org.cirdles.squid.utilities.stateUtilities.SquidLabData;
-import org.cirdles.squid.utilities.stateUtilities.SquidPersistentState;
-import org.xml.sax.SAXException;
 
 /**
  * Provides specialized class to implement API for Squid3Ink Virtual Squid3.
@@ -48,26 +53,17 @@ import org.xml.sax.SAXException;
  */
 public class Squid3Ink implements Squid3API {
 
-    private static final SquidLabData squidLabData;
-    private static final SquidPersistentState squidPersistentState;
+    private static SquidLabData squidLabData;
+    private static SquidPersistentState squidPersistentState;
+    private Squid3ProjectBasicAPI squid3Project;
 
-    static {
+    private Squid3Ink(String squidUserHomeDirectory) {
+        System.setProperty("user.home", squidUserHomeDirectory);
         CalamariFileUtilities.initSampleParametersModels();
         squidLabData = SquidLabData.getExistingSquidLabData();
         squidLabData.testVersionAndUpdate();
-
         squidPersistentState
                 = SquidPersistentState.getExistingPersistentState();
-    }
-
-    private Squid3ProjectBasicAPI squid3Project;
-
-    @Override
-    public Squid3ProjectBasicAPI getSquid3Project() {
-        return squid3Project;
-    }
-
-    private Squid3Ink() {
         CalamariFileUtilities.initExamplePrawnFiles();
         CalamariFileUtilities.initDemoSquidProjectFiles();
         CalamariFileUtilities.loadShrimpFileSchema();
@@ -76,12 +72,56 @@ public class Squid3Ink implements Squid3API {
         CalamariFileUtilities.initSquidTaskLibraryFiles();
     }
 
-    public static Squid3API spillSquid3Ink() {
-        return new Squid3Ink();
+    public static SquidLabData getSquidLabData() {
+        return squidLabData;
+    }
+
+    public static SquidPersistentState getSquidPersistentState() {
+        return squidPersistentState;
+    }
+
+    public static Squid3API spillSquid3Ink(String squidUserHomeDirectory) {
+        return new Squid3Ink(squidUserHomeDirectory);
     }
 
     /**
-     *
+     * @param args the command line arguments
+     * @throws java.io.IOException
+     * @throws org.cirdles.squid.exceptions.SquidException
+     * @throws javax.xml.bind.JAXBException
+     * @throws org.xml.sax.SAXException
+     */
+    public static void main(String[] args) throws IOException, SquidException, JAXBException, SAXException {
+        Squid3API squid3Ink = Squid3Ink.spillSquid3Ink("/Users/TEST");
+
+        squid3Ink.openDemonstrationSquid3Project();
+//        squid3Ink.newSquid3GeochronProjectFromPrawnXML(
+//                (new File("Squid3_Resources/ExamplePrawnXMLFiles/836_1_2016_Nov_28_09.50.xml")).toPath());
+//        squid3Ink.newSquid3GeochronProjectFromZippedPrawnXML(
+//                (new File("zippy/836_1_2016_Nov_28_09.50.xml.zip")).toPath());
+//
+        squid3Ink.generateAllSquid3ProjectReports();
+        System.out.println(squid3Ink.getSquid3Project().getProjectName()
+                + "\n" + squid3Ink.getSquid3Project().getPrawnFileHandler().getReportsEngine().makeReportFolderStructure());
+        try {
+            System.out.println(squid3Ink.generateReferenceMaterialSummaryExpressionsReport().toString());
+            System.out.println(squid3Ink.generatePerScanReports().toString());
+        } catch (IOException iOException) {
+        }
+//        squid3Ink.saveAsSquid3Project(new File("XXXXXX.squid"));
+//        squid3Ink.generateAllSquid3ProjectReports();
+//        System.out.println(squid3Ink.getSquid3Project().getProjectName()
+//                + "   " + squid3Ink.getSquid3Project().getPrawnFileHandler().getReportsEngine().makeReportFolderStructure());
+
+        System.out.println(squid3Ink.retrieveSquid3ProjectListMRU());
+    }
+
+    @Override
+    public Squid3ProjectBasicAPI getSquid3Project() {
+        return squid3Project;
+    }
+
+    /**
      * @param prawnXMLFileSourcePath
      * @throws IOException
      * @throws JAXBException
@@ -113,7 +153,6 @@ public class Squid3Ink implements Squid3API {
     }
 
     /**
-     *
      * @param prawnXMLFileSourcePath
      * @throws IOException
      * @throws JAXBException
@@ -201,7 +240,6 @@ public class Squid3Ink implements Squid3API {
     }
 
     /**
-     *
      * @return
      */
     @Override
@@ -222,7 +260,6 @@ public class Squid3Ink implements Squid3API {
     }
 
     /**
-     *
      * @throws IOException
      * @throws SquidException
      */
@@ -236,7 +273,6 @@ public class Squid3Ink implements Squid3API {
     }
 
     /**
-     *
      * @param squid3ProjectFileTarget
      * @throws IOException
      * @throws SquidException
@@ -262,44 +298,155 @@ public class Squid3Ink implements Squid3API {
         }
     }
 
-    // REPORTS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    /**
-     * This method first checks to see if reports folder is initialized
-     *
-     * @throws IOException
-     */
+
+    // project UI management
+
     @Override
-    public void generateAllSquid3ProjectReports() throws IOException {
-        if (squid3Project.hasReportsFolder()) {
-            ((Squid3ProjectReportingAPI) squid3Project).generateAllReports();
+    public void setUseSBM(boolean doUse) {
+        squid3Project.setUseSBM(doUse);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setUseSBM(doUse);
+        task.setChanged(true);
+        task.setupSquidSessionSpecsAndReduceAndReport(true);
+    }
+
+    @Override
+    public void setUseLinearRegression(boolean doUse) {
+        squid3Project.setUserLinFits(doUse);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setUserLinFits(doUse);
+        task.setChanged(true);
+        task.setupSquidSessionSpecsAndReduceAndReport(true);
+    }
+
+    @Override
+    public void setPreferredIndexIsotope(Squid3Constants.IndexIsoptopesEnum isotope) {
+        squid3Project.setSelectedIndexIsotope(isotope);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setChanged(true);
+    }
+
+    @Override
+    public void setAutoExcludeSpots(boolean doAutoExclude) {
+        squid3Project.setSquidAllowsAutoExclusionOfSpots(doAutoExclude);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.updateRefMatCalibConstWMeanExpressions(doAutoExclude);
+    }
+
+    @Override
+    public void setMinimumExternalSigma206238(double minExternalSigma) {
+        squid3Project.setExtPErrU(minExternalSigma);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setExtPErrU(minExternalSigma);
+    }
+
+    @Override
+    public void setMinimumExternalSigma208232(double minExternalSigma) {
+        squid3Project.setExtPErrTh(minExternalSigma);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setExtPErrTh(minExternalSigma);
+    }
+
+    @Override
+    public void setDefaultCommonPbModel(ParametersModel commonPbModel) {
+        ((Squid3ProjectParametersAPI) squid3Project).setCommonPbModel(commonPbModel);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setChanged(true);
+        if (task.getReferenceMaterialSpots().size() > 0) {
+            task.setupSquidSessionSpecsAndReduceAndReport(false);
         }
     }
 
+    @Override
+    public void setDefaultPhysicalConstantsModel(ParametersModel physicalConstantsModel) {
+        ((Squid3ProjectParametersAPI) squid3Project).setPhysicalConstantsModel(physicalConstantsModel);
+        SquidProject.setProjectChanged(true);
+        TaskInterface task = squid3Project.getTask();
+        task.setChanged(true);
+        if (task.getReferenceMaterialSpots().size() > 0) {
+            task.setupSquidSessionSpecsAndReduceAndReport(false);
+        }
+    }
+
+    @Override
+    public void setDefaultParametersFromCurrentChoices() {
+        TaskDesign taskDesign = squidPersistentState.getTaskDesign();
+        taskDesign.setUseSBM(squid3Project.isUseSBM());
+        taskDesign.setUserLinFits(squid3Project.isUserLinFits());
+        taskDesign.setSelectedIndexIsotope(squid3Project.getSelectedIndexIsotope());
+        taskDesign.setSquidAllowsAutoExclusionOfSpots(squid3Project.isSquidAllowsAutoExclusionOfSpots());
+        taskDesign.setExtPErrU(squid3Project.getExtPErrU());
+        taskDesign.setExtPErrTh(squid3Project.getExtPErrTh());
+        taskDesign.setPhysicalConstantsModel(squid3Project.getPhysicalConstantsModel());
+        squidLabData.setPhysConstDefault(squid3Project.getPhysicalConstantsModel());
+        taskDesign.setCommonPbModel(squid3Project.getCommonPbModel());
+        squidLabData.setCommonPbDefault(squid3Project.getCommonPbModel());
+        taskDesign.setAnalystName(squid3Project.getAnalystName());
+
+        squidPersistentState.updateSquidPersistentState();
+    }
+
+    @Override
+    public void refreshModelsAction() {
+        TaskInterface task = squid3Project.getTask();
+        task.refreshParametersFromModels(squid3Project.isTypeGeochron(), true, false);
+    }
+
+    // REPORTS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     /**
-     * @param args the command line arguments
-     * @throws java.io.IOException
-     * @throws org.cirdles.squid.exceptions.SquidException
-     * @throws javax.xml.bind.JAXBException
-     * @throws org.xml.sax.SAXException
+     * @return @throws IOException
      */
-    public static void main(String[] args) throws IOException, SquidException, JAXBException, SAXException {
-        Squid3API squid3Ink = Squid3Ink.spillSquid3Ink();
+    @Override
+    public Path generateReferenceMaterialSummaryExpressionsReport() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generateReferenceMaterialSummaryExpressionsReport();
+    }
 
-        //squid3Ink.openDemonstrationSquid3Project();
-//        squid3Ink.newSquid3GeochronProjectFromPrawnXML(
-//                (new File("Squid3_Resources/ExamplePrawnXMLFiles/836_1_2016_Nov_28_09.50.xml")).toPath());
-        squid3Ink.newSquid3GeochronProjectFromZippedPrawnXML(
-                (new File("zippy/836_1_2016_Nov_28_09.50.xml.zip")).toPath());
+    /**
+     * @return @throws IOException
+     */
+    @Override
+    public Path generateUnknownsSummaryExpressionsReport() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generateUnknownsSummaryExpressionsReport();
+    }
 
-        squid3Ink.generateAllSquid3ProjectReports();
-        System.out.println(squid3Ink.getSquid3Project().getProjectName()
-                + "   " + squid3Ink.getSquid3Project().getPrawnFileHandler().getReportsEngine().makeReportFolderStructure());
+    /**
+     * @return @throws IOException
+     */
+    @Override
+    public Path generateTaskSummaryReport() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generateTaskSummaryReport();
+    }
 
-        squid3Ink.saveAsSquid3Project(new File("XXXXXX.squid"));
-        squid3Ink.generateAllSquid3ProjectReports();
-        System.out.println(squid3Ink.getSquid3Project().getProjectName()
-                + "   " + squid3Ink.getSquid3Project().getPrawnFileHandler().getReportsEngine().makeReportFolderStructure());
+    /**
+     * @return @throws IOException
+     */
+    @Override
+    public Path generateProjectAuditReport() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generateProjectAuditReport();
+    }
 
-        System.out.println(squid3Ink.retrieveSquid3ProjectListMRU());
+    /**
+     * @return @throws IOException
+     */
+    @Override
+    public Path generateAllSquid3ProjectReports() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generateAllReports();
+    }
+
+    /**
+     * @return
+     * @throws IOException
+     */
+    @Override
+    public Path generatePerScanReports() throws IOException {
+        return ((Squid3ProjectReportingAPI) squid3Project).generatePerScanReports();
     }
 }
